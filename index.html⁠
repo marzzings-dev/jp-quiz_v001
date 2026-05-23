@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>일본어 단어 퀴즈</title>
+    <!-- React 및 Babel CDN 로드 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #F7F5F0; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const levelDatabase = {
+          1: [
+            { id: "L1_1", japanese: "春", hiragana: "はる", meaning: "봄",     romaji: "haru",   hint: "春は桜がきれいです。",         hintKo: "봄에는 벚꽃이 아름다워요." },
+            { id: "L1_2", japanese: "夏", hiragana: "なつ", meaning: "여름",   romaji: "natsu",  hint: "夏はとても暑いです。",          hintKo: "여름은 매우 더워요." },
+            { id: "L1_3", japanese: "秋", hiragana: "あき", meaning: "가을",   romaji: "aki",    hint: "秋になると葉が赤くなります。",  hintKo: "가을이 되면 잎이 빨개져요." },
+            { id: "L1_4", japanese: "冬", hiragana: "ふゆ", meaning: "겨울",   romaji: "fuyu",   hint: "冬は雪が降ります。",            hintKo: "겨울에는 눈이 내려요." },
+            { id: "L1_5", japanese: "花", hiragana: "はな", meaning: "꽃",     romaji: "hana",   hint: "花がとてもきれいです。",        hintKo: "꽃이 정말 예뻐요." },
+            { id: "L1_6", japanese: "空", hiragana: "そら", meaning: "하늘",   romaji: "sora",   hint: "今日の空は青いです。",          hintKo: "오늘 하늘은 파래요." },
+            { id: "L1_7", japanese: "海", hiragana: "うみ", meaning: "바다",   romaji: "umi",    hint: "海で泳ぎたいです。",            hintKo: "바다에서 수영하고 싶어요." }
+          ],
+          2: [
+            { id: "L2_1", japanese: "山", hiragana: "やま", meaning: "산",     romaji: "yama",   hint: "山に登るのが好きです。",        hintKo: "등산을 좋아해요." },
+            { id: "L2_2", japanese: "川", hiragana: "かわ", meaning: "강",     romaji: "kawa",   hint: "川の水はきれいです。",          hintKo: "강물은 맑아요." },
+            { id: "L2_3", japanese: "木", hiragana: "き",   meaning: "나무",   romaji: "ki",     hint: "大きい木の下で休みます。",      hintKo: "큰 나무 아래서 쉬어요." },
+            { id: "L2_4", japanese: "水", hiragana: "みず", meaning: "물",     romaji: "mizu",   hint: "毎日水を飲みます。",            hintKo: "매일 물을 마셔요." },
+            { id: "L2_5", japanese: "火", hiragana: "ひ",   meaning: "불",     romaji: "hi",     hint: "火は危ないです。",              hintKo: "불은 위험해요." },
+            { id: "L2_6", japanese: "月", hiragana: "つき", meaning: "달",     romaji: "tsuki",  hint: "夜に月が光っています。",        hintKo: "밤에 달이 빛나요." },
+            { id: "L2_7", japanese: "星", hiragana: "ほし", meaning: "별",     romaji: "hoshi",  hint: "夜空に星がたくさんあります。",  hintKo: "밤하늘에 별이 많이 있어요." }
+          ],
+          3: [
+            { id: "L3_1", japanese: "猫", hiragana: "ねこ", meaning: "고양이", romaji: "neko",   hint: "猫はかわいいです。",            hintKo: "고양이는 귀여워요." },
+            { id: "L3_2", japanese: "犬", hiragana: "いぬ", meaning: "개",     romaji: "inu",    hint: "犬と公園を散步します。",        hintKo: "개와 공원을 산책해요." },
+            { id: "L3_3", japanese: "鳥", hiragana: "とり", meaning: "새",     romaji: "tori",   hint: "鳥が空을飛んでいます。",        hintKo: "새가 하늘을 날고 있어요." },
+            { id: "L3_4", japanese: "魚", hiragana: "さかな",meaning:"물고기", romaji: "sakana", hint: "魚を食べるのが好きです。",      hintKo: "물고기 먹는 것을 좋아해요." },
+            { id: "L3_5", japanese: "本", hiragana: "ほん", meaning: "책",     romaji: "hon",    hint: "毎晩本を読みます。",            hintKo: "매일 밤 책을 읽어요." },
+            { id: "L3_6", japanese: "日", hiragana: "ひ",   meaning: "날/해",  romaji: "hi",     hint: "今日はいい日です。",            hintKo: "오늘은 좋은 날이에요." }
+          ]
+        };
+
+        const allWords = [...levelDatabase[1], ...levelDatabase[2], ...levelDatabase[3]];
+        const TIMER_MAX = 10;
+        const C = {
+          bg: "#F7F5F0", surface: "#FFFFFF", border: "#E8E4DC", text: "#2C2C2C", textMid: "#7A7570", textSoft: "#B0AAA2",
+          accent: "#5B7FA6", green: "#4A8C6F", red: "#B05555", amber: "#9B7D3A"
+        };
+
+        function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+        function getChoices(correct, all) {
+          const filtered = all.filter(w => w.meaning !== correct.meaning && w.id !== correct.id);
+          return shuffle([correct, ...shuffle(filtered).slice(0, 3)]);
+        }
+        function speakJapanese(text, rate = 0.85) {
+          if (!window.speechSynthesis) return;
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = "ja-JP"; u.rate = rate;
+          window.speechSynthesis.speak(u);
+        }
+
+        function Mascot({ mood }) {
+          const eyeY  = mood === "happy" ? 34 : mood === "sad" ? 38 : 36;
+          const mouth = mood === "happy" ? "M28 50 Q40 59 52 50" : mood === "sad" ? "M28 54 Q40 45 52 54" : "M32 51 Q40 54 48 51";
+          const col   = mood === "happy" ? C.green : mood === "sad" ? C.red : mood === "hint" ? C.amber : C.accent;
+          return (
+            <svg width="64" height="64" viewBox="0 0 80 80">
+              <rect x="14" y="22" width="52" height="44" rx="14" fill={C.surface} stroke={col} strokeWidth="2.5"/>
+              <circle cx="30" cy={eyeY} r="5" fill={col}/><circle cx="50" cy={eyeY} r="5" fill={col}/>
+              <path d={mouth} stroke={col} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+              <line x1="40" y1="22" x2="40" y2="12" stroke={col} strokeWidth="2"/><circle cx="40" cy="10" r="4" fill={col}/>
+            </svg>
+          );
+        }
+
+        function App() {
+          const [level, setLevel] = useState(1);
+          const [failedWords, setFailedWords] = useState([]);
+          const [deck, setDeck] = useState([]);
+          const [index, setIndex] = useState(0);
+          const [choices, setChoices] = useState([]);
+          const [selected, setSelected] = useState(null);
+          const [score, setScore] = useState(0);
+          const [levelFinished, setLevelFinished] = useState(false);
+          const [gameClear, setGameClear] = useState(false);
+          const [mood, setMood] = useState("idle");
+          const [speaking, setSpeaking] = useState(false);
+          const [autoSpeak, setAutoSpeak] = useState(true);
+          const [timeLeft, setTimeLeft] = useState(TIMER_MAX);
+          const [hintShown, setHintShown] = useState(false);
+
+          const [reviewPool, setReviewPool] = useState([]);
+          const [matchCards, setMatchCards] = useState([]);
+          const [matchTarget, setMatchTarget] = useState(null);
+          const [matchSelected, setMatchSelected] = useState(null);
+          const [matchResult, setMatchResult] = useState(null);
+          const [bothDone, setBothDone] = useState(false);
+          const timerRef = useRef(null);
+
+          useEffect(() => {
+            const currentLevelBase = levelDatabase[level] || [];
+            const itemsFromFailed = failedWords.filter(fw => !currentLevelBase.some(cb => cb.id === fw.id));
+            const finalDeck = shuffle([...currentLevelBase, ...itemsFromFailed]);
+            setDeck(finalDeck);
+            setIndex(0);
+            setLevelFinished(false);
+          }, [level]);
+
+          const current = deck[index];
+
+          useEffect(() => {
+            if (!current) return;
+            setChoices(getChoices(current, allWords));
+            setTimeLeft(TIMER_MAX);
+            setHintShown(false);
+            setMood("idle");
+            setSelected(null);
+            setMatchSelected(null);
+            setMatchResult(null);
+            setBothDone(false);
+            if (autoSpeak) {
+              const t = setTimeout(() => doSpeak(current.hiragana), 400);
+              return () => clearTimeout(t);
+            }
+          }, [index, deck]);
+
+          useEffect(() => {
+            if (reviewPool.length === 0) return;
+            const pool = reviewPool.slice(-4);
+            setMatchCards(shuffle(pool));
+            setMatchTarget(pool[Math.floor(Math.random() * pool.length)]);
+            setMatchSelected(null);
+            setMatchResult(null);
+          }, [reviewPool]);
+
+          useEffect(() => {
+            if (selected || levelFinished || gameClear || !current) return;
+            if (timeLeft <= 0) { triggerHint(); return; }
+            timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+            return () => clearTimeout(timerRef.current);
+          }, [timeLeft, selected, levelFinished, gameClear, current]);
+
+          function doSpeak(text, rate) {
+            setSpeaking(true);
+            speakJapanese(text, rate);
+            setTimeout(() => setSpeaking(false), 1200);
+          }
+
+          function triggerHint() {
+            if (hintShown) return;
+            setHintShown(true);
+            setMood("hint");
+            doSpeak(current.hint, 0.75);
+          }
+
+          function handleChoice(choice) {
+            if (selected) return;
+            clearTimeout(timerRef.current);
+            setSelected(choice);
+            const isCorrect = choice.meaning === current.meaning;
+            setMood(isCorrect ? "happy" : "sad");
+            if (isCorrect) {
+              setScore(s => s + 1);
+              setFailedWords(prev => prev.filter(w => w.id !== current.id));
+            } else {
+              setFailedWords(prev => prev.some(w => w.id === current.id) ? prev : [...prev, current]);
+            }
+            setReviewPool(prev => [...prev.filter(w => w.id !== current.id), current].slice(-4));
+          }
+
+          function handleMatch(card, idx) {
+            if (matchResult || !matchTarget) return;
+            setMatchSelected(idx);
+            const isCorrect = card.id === matchTarget.id;
+            setMatchResult(isCorrect ? "correct" : "wrong");
+            setTimeout(() => {
+              setBothDone(true);
+              setTimeout(() => {
+                if (index + 1 >= deck.length) {
+                  if (levelDatabase[level + 1]) setLevelFinished(true);
+                  else setGameClear(true);
+                } else setIndex(i => i + 1);
+              }, 500);
+            }, 900);
+          }
+
+          if (!current && !levelFinished && !gameClear) return null;
+
+          if (gameClear) {
+            return (
+              <div style={S.bg}>
+                <div style={S.resultCard}>
+                  <Mascot mood="happy" />
+                  <div style={{...S.resultBig, fontSize: 28, fontWeight: 800, color: C.green, marginTop: 12}}>🏆 전 레벨 완전 정복!</div>
+                  <button style={S.restartBtn} onClick={() => window.location.reload()}>처음부터 다시 도전</button>
+                </div>
+              </div>
+            );
+          }
+
+          if (levelFinished) {
+            return (
+              <div style={S.bg}>
+                <div style={S.resultCard}>
+                  <Mascot mood="happy" />
+                  <div style={{...S.resultBig, fontSize: 36, fontWeight: 800, color: C.accent, margin: "10px 0"}}>레벨 {level} 통과!</div>
+                  <button style={S.restartBtn} onClick={() => setLevel(l => l + 1)}>레벨 {level + 1} 시작하기 →</button>
+                </div>
+              </div>
+            );
+          }
+
+          const progress = deck.length ? (index / deck.length) * 100 : 0;
+
+          return (
+            <div style={S.bg}>
+              <div style={S.header}>
+                <div style={S.logoRow}><span style={S.logoKanji}>LV{level}</span><div style={S.logoTitle}>일본어 단어 퀴즈</div></div>
+                <button style={autoSpeak ? S.volBtnOn : S.volBtn} onClick={() => setAutoSpeak(!autoSpeak)}>{autoSpeak ? "🔊 자동발음" : "🔇 음소거"}</button>
+              </div>
+              <div style={S.progressOuter}><div style={{ ...S.progressInner, width: `${progress}%` }}/></div>
+              <div style={S.section}>
+                <div style={S.card}>
+                  <div style={S.cardBody}>
+                    <Mascot mood={mood}/>
+                    <div style={S.kanjiWrap}>
+                      <div style={S.kanjiChar}>{current.japanese}</div>
+                      <div style={S.hiragana}>{current.hiragana} ({current.romaji})</div>
+                      <button style={S.speakBtn} onClick={() => doSpeak(current.hiragana)}>🔉 재생</button>
+                    </div>
+                  </div>
+                  {hintShown && !selected && (
+                    <div style={S.hintBox}>
+                      <div style={S.hintJp}>{current.hint}</div>
+                      <div style={S.hintKo}>{current.hintKo}</div>
+                    </div>
+                  )}
+                </div>
+                <div style={S.choiceGrid}>
+                  {choices.map((c, i) => (
+                    <button key={i} style={S.choice} onClick={() => handleChoice(c)}>{c.meaning}</button>
+                  ))}
+                </div>
+              </div>
+              {selected && reviewPool.length > 0 && matchTarget && (
+                <div style={S.section}>
+                  <div style={S.matchTargetBox}>
+                    <span style={S.matchTargetWord}>[매칭] {matchTarget.meaning} = ?</span>
+                  </div>
+                  <div style={S.matchGrid}>
+                    {matchCards.map((card, i) => (
+                      <button key={i} style={S.matchCard} onClick={() => handleMatch(card, i)}>{card.japanese}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        const S = {
+          bg: { minHeight: "100vh", background: "#F7F5F0", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 16px" },
+          header: { width: "100%", maxWidth: 440, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+          logoRow: { display: "flex", alignItems: "center", gap: 10 },
+          logoKanji: { fontSize: 18, fontWeight: 900, color: "#5B7FA6", background: "#EBF0F7", padding: "4px 8px", borderRadius: 8 },
+          logoTitle: { fontSize: 14, fontWeight: 700 },
+          volBtn: { background: "#FFFFFF", border: "1px solid #E8E4DC", borderRadius: 8, padding: "6px 10px", fontSize: 12 },
+          volBtnOn: { background: "#EBF0F7", border: "1px solid #5B7FA6", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: "bold", color: "#5B7FA6" },
+          progressOuter: { width: "100%", maxWidth: 440, height: 6, background: "#E8E4DC", borderRadius: 3, marginBottom: 16 },
+          progressInner: { height: "100%", background: "#5B7FA6", borderRadius: 3 },
+          section: { width: "100%", maxWidth: 440, marginBottom: 15 },
+          card: { background: "#FFFFFF", border: "1px solid #E8E4DC", borderRadius: 16, padding: 20, marginBottom: 12 },
+          cardBody: { display: "flex", alignItems: "center", gap: 16 },
+          kanjiWrap: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center" },
+          kanjiChar: { fontSize: 48, fontWeight: "bold" },
+          hiragana: { fontSize: 14, color: "#5B7FA6", marginBottom: 5 },
+          speakBtn: { fontSize: 11, background: "none", border: "1px solid #C5D5E8", borderRadius: 20, padding: "4px 12px" },
+          hintBox: { marginTop: 10, background: "#F7F0E0", padding: 8, borderRadius: 6 },
+          hintJp: { fontSize: 12 }, hintKo: { fontSize: 11, color: "#7A7570" },
+          choiceGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+          choice: { background: "#FFFFFF", border: "1px solid #E8E4DC", borderRadius: 12, padding: "14px", fontWeight: "bold" },
+          matchTargetBox: { background: "#FFFFFF", border: "1px solid #C5C9ED", borderRadius: 12, padding: 10, marginBottom: 10, textAlign: "center" },
+          matchTargetWord: { fontSize: 16, fontWeight: "bold", color: "#3D4299" },
+          matchGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 },
+          matchCard: { background: "#FFFFFF", border: "1px solid #E8E4DC", borderRadius: 10, padding: "10px 4px", fontSize: 16, fontWeight: "bold" },
+          resultCard: { background: "#FFFFFF", border: "1px solid #E8E4DC", borderRadius: 20, padding: 32, maxWidth: 400, width: "100%", textAlign: "center", marginTop: 40 },
+          restartBtn: { background: "#5B7FA6", color: "#FFFFFF", border: "none", borderRadius: 12, padding: "14px", width: "100%", marginTop: 20, fontWeight: "bold" }
+        };
+
+        const root = tragedies = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
