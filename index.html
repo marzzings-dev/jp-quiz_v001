@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>일본어 단어 퀴즈</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #f3f4f6; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const wordDatabase = [
+            { id: 1, word: "食べる", reading: "たべる", meaning: "먹다", level: 1 },
+            { id: 2, word: "飲む", reading: "のむ", meaning: "마시다", level: 1 },
+            { id: 3, word: "学校", reading: "がっこう", meaning: "학교", level: 1 },
+            { id: 4, word: "日本語", reading: "にほんご", meaning: "일본어", level: 1 },
+            { id: 5, word: "美味しい", reading: "おいしい", meaning: "맛있다", level: 1 },
+            { id: 6, word: "大きい", reading: "おおきい", meaning: "크다", level: 2 },
+            { id: 7, word: "歩く", reading: "あるく", meaning: "걷다", level: 2 },
+            { id: 8, word: "友達", reading: "ともだち", meaning: "친구", level: 2 },
+            { id: 9, word: "先生", reading: "せんせい", meaning: "선생님", level: 2 },
+            { id: 10, word: "時計", reading: "とけい", meaning: "시계", level: 2 },
+            { id: 11, reading: "としょかん", word: "図書館", meaning: "도서관", level: 3 },
+            { id: 12, reading: "じどうしゃ", word: "自動車", meaning: "자동차", level: 3 },
+            { id: 13, reading: "いっしょうけんめい", word: "一生懸命", meaning: "열심히", level: 3 },
+            { id: 14, reading: "じゅんび", word: "準備", meaning: "준비", level: 3 },
+            { id: 15, reading: "やくそく", word: "約束", meaning: "약속", level: 3 }
+        ];
+
+        function App() {
+            const [currentLevel, setCurrentLevel] = React.useState(1);
+            const [score, setScore] = React.useState(0);
+            const [currentWordIndex, setCurrentWordIndex] = React.useState(0);
+            const [options, setOptions] = React.useState([]);
+            const [selectedAnswer, setSelectedAnswer] = React.useState(null);
+            const [isCorrect, setIsCorrect] = React.useState(null);
+            const [wrongAnswers, setWrongAnswers] = React.useState([]);
+            const [showReview, setShowReview] = React.useState(false);
+
+            const filteredWords = wordDatabase.filter(w => w.level === currentLevel);
+            const currentWord = filteredWords[currentWordIndex];
+
+            React.useEffect(() => {
+                if (currentWord) {
+                    generateOptions(currentWord);
+                    setSelectedAnswer(null);
+                    setIsCorrect(null);
+                }
+            }, [currentWordIndex, currentLevel]);
+
+            const generateOptions = (correctWord) => {
+                const wrongOptions = wordDatabase
+                    .filter(w => w.id !== correctWord.id)
+                    .map(w => w.meaning);
+                
+                const shuffledWrong = wrongOptions.sort(() => 0.5 - Math.random()).slice(0, 3);
+                const allOptions = [...shuffledWrong, correctWord.meaning].sort(() => 0.5 - Math.random());
+                setOptions(allOptions);
+            };
+
+            const handleAnswerClick = (option) => {
+                if (selectedAnswer !== null) return;
+                
+                setSelectedAnswer(option);
+                const correct = option === currentWord.meaning;
+                setIsCorrect(correct);
+
+                if (correct) {
+                    setScore(score + 10);
+                } else {
+                    if (!wrongAnswers.some(w => w.id === currentWord.id)) {
+                        setWrongAnswers([...wrongAnswers, currentWord]);
+                    }
+                }
+            };
+
+            const speakWord = () => {
+                if ('speechSynthesis' in window && currentWord) {
+                    const utterance = new SpeechSynthesisUtterance(currentWord.word);
+                    utterance.lang = 'ja-JP';
+                    window.speechSynthesis.speak(utterance);
+                }
+            };
+
+            const handleNext = () => {
+                if (currentWordIndex < filteredWords.length - 1) {
+                    setCurrentWordIndex(currentWordIndex + 1);
+                } else {
+                    if (currentLevel < 3) {
+                        alert(`레벨 ${currentLevel} 완료! 다음 레벨로 진급합니다.`);
+                        setCurrentLevel(currentLevel + 1);
+                        setCurrentWordIndex(0);
+                    } else {
+                        alert("모든 레벨을 완료하셨습니다! 오답 노트를 확인해보세요.");
+                        setShowReview(true);
+                    }
+                }
+            };
+
+            if (showReview) {
+                return (
+                    <div className="max-w-md mx-auto my-10 p-6 bg-white rounded-2xl shadow-xl">
+                        <h2 className="text-2xl font-bold text-center text-indigo-600 mb-6">📝 오답 노트</h2>
+                        {wrongAnswers.length === 0 ? (
+                            <p className="text-center text-gray-600">틀린 단어가 없습니다! 완벽해요! 🎉</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {wrongAnswers.map(w => (
+                                    <div key={w.id} className="p-4 bg-red-50 rounded-xl border border-red-100">
+                                        <div className="text-xl font-bold text-gray-800">{w.word}</div>
+                                        <div className="text-sm text-gray-500">발음: {w.reading}</div>
+                                        <div className="text-md text-indigo-600 font-semibold mt-1">뜻: {w.meaning}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <button 
+                            onClick={() => {
+                                setCurrentLevel(1);
+                                setScore(0);
+                                setCurrentWordIndex(0);
+                                setWrongAnswers([]);
+                                setShowReview(false);
+                            }}
+                            className="w-full mt-6 bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:bg-indigo-700 transition"
+                        >
+                            처음부터 다시 도전
+                        </button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-md mx-auto my-6 p-5 bg-white rounded-2xl shadow-xl">
+                    <div className="flex justify-between items-center mb-6">
+                        <span className="bg-indigo-100 text-indigo-800 font-bold px-3 py-1 rounded-full text-sm">레벨 {currentLevel}</span>
+                        <span className="text-gray-600 font-semibold">점수: <span className="text-indigo-600">{score}</span></span>
+                    </div>
+
+                    {currentWord && (
+                        <div className="text-center my-8">
+                            <h1 className="text-5xl font-bold text-gray-800 mb-2">{currentWord.word}</h1>
+                            <p className="text-gray-400 text-sm mb-4">[{currentWord.reading}]</p>
+                            <button 
+                                onClick={speakWord}
+                                className="inline-flex items-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition"
+                            >
+                                🔊 발음 듣기
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-3 my-6">
+                        {options.map((option, idx) => {
+                            let btnStyle = "bg-gray-50 border-2 border-gray-100 text-gray-700";
+                            if (selectedAnswer === option) {
+                                btnStyle = isCorrect ? "bg-green-500 border-green-500 text-white font-bold" : "bg-red-500 border-red-500 text-white font-bold";
+                            } else if (selectedAnswer !== null && option === currentWord.meaning) {
+                                btnStyle = "bg-green-500 border-green-500 text-white font-bold";
+                            }
+
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => handleAnswerClick(option)}
+                                    disabled={selectedAnswer !== null}
+                                    className={`w-full text-left p-4 rounded-xl text-lg transition duration-200 shadow-sm ${btnStyle}`}
+                                >
+                                    {idx + 1}. {option}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {selectedAnswer !== null && (
+                        <div className="mt-6 text-center">
+                            <p className={`text-xl font-bold mb-4 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                {isCorrect ? '정답입니다! 🎉' : '아쉽습니다! 😢'}
+                            </p>
+                            <button
+                                onClick={handleNext}
+                                className="w-full bg-indigo-600 text-white font-bold py-4 px-4 rounded-xl shadow-lg hover:bg-indigo-700 transition"
+                            >
+                                {currentWordIndex === filteredWords.length - 1 && currentLevel === 3 ? "결과 보기" : "다음 문제로 ➔"}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
